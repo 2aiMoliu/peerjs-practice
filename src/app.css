@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Design tokens — PLAN.md "Design plan". Dark "viewing room", red = live only. */
+@theme {
+  --color-room: #101312;
+  --color-panel: #191d1b;
+  --color-line: #2a302d;
+  --color-paper: #e8ece9;
+  --color-fog: #8a948e;
+  --color-signal: #e5484d;
+  --color-caution: #d8a03d;
+
+  --font-ui: "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-hud: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --animate-live: livepulse 2.4s ease-in-out infinite;
+}
+
+@keyframes livepulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-room);
+  color: var(--color-paper);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+}
+
+input,
+button,
+a {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-paper);
+  outline-offset: 2px;
+}
