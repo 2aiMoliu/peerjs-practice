@@ -1,4 +1,5 @@
-import { createEffect, createMemo, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js'
+import QRCode from 'qrcode'
 import { createCameraSession } from '../lib/camera-session'
 import { viewerUrl } from '../lib/util'
 import { liveDot, useTimecode } from './hud'
@@ -7,6 +8,17 @@ export function CameraView() {
   const s = createCameraSession()
   const timecode = useTimecode(s.startedAt)
   const [copied, setCopied] = createSignal(false)
+  const [qr, setQr] = createSignal('')
+
+  onMount(() => {
+    QRCode.toDataURL(viewerUrl(s.joinCode()), {
+      margin: 1,
+      width: 192,
+      color: { dark: '#E8ECE9', light: '#101312' },
+    })
+      .then(setQr)
+      .catch(() => {})
+  })
 
   let videoEl!: HTMLVideoElement
   const attach = (el: HTMLVideoElement) => {
@@ -52,6 +64,16 @@ export function CameraView() {
             <p class="font-hud text-4xl font-medium tracking-[0.3em] text-paper">
               {s.joinCode()}
             </p>
+            <div class="flex flex-col items-center gap-2">
+              <img
+                src={qr()}
+                alt="QR code that opens the watch screen with this code"
+                class="size-40 rounded border border-line"
+                width="192"
+                height="192"
+              />
+              <p class="text-sm text-fog">scan on the desktop</p>
+            </div>
             <button
               class="rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
               onClick={copyLink}
