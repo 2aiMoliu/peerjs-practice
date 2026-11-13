@@ -1,9 +1,9 @@
 import { createSignal, onCleanup } from 'solid-js'
-import Peer, { PeerErrorType, type MediaConnection } from 'peerjs'
+import Peer, { PeerErrorType, type DataConnection, type MediaConnection } from 'peerjs'
 import { peerOptions } from './peer-config'
 
 export type ViewerStatus =
-  | 'connecting' // calling the Camera, no media yet
+  | 'connecting' // requesting the feed, no media yet
   | 'live' // feed on screen
   | 'reconnecting' // feed dropped, retrying (Q6 auto-reconnect)
   | 'ended'
@@ -11,13 +11,16 @@ export type ViewerStatus =
 
 export type ViewerErrorKind = 'no-camera' | 'busy' | 'network' | 'failed'
 
-const BUSY_TIMEOUT_MS = 2_000
+const BUSY_TIMEOUT_MS = 5_000
 const RETRY_DELAYS = [1_000, 2_000, 4_000]
 
 /**
  * Viewer role: watch a Camera's feed by Join code.
- * Video flows Camera → Viewer; we `call` with an empty stream and the Camera
- * answers with the real one (see PLAN.md protocol decisions).
+ *
+ * Flow: we open a data connection to the Camera (watch request); the Camera
+ * then calls us with the real stream and we answer receive-only. Media flows
+ * Camera → Viewer. (An offer with no tracks cannot carry the video — see
+ * camera-session.ts.)
  */
 export function createViewerSession(code: string) {
   const [status, setStatus] = createSignal<ViewerStatus>('connecting')
@@ -27,6 +30,7 @@ export function createViewerSession(code: string) {
   const [interrupted, setInterrupted] = createSignal(false)
 
   let peer: Peer | null = null
+  let request: DataConnection | null = null
   let call: MediaConnection | null = null
   let hadMedia = false
   let retryCount = 0
@@ -61,6 +65,8 @@ export function createViewerSession(code: string) {
         setStatus('error')
       })
       peer.on('open', dial)
+      // Registered once per peer, not per dial attempt.
+      peer.on('call', onCall)
       // If already open (recreated peer), the 'open' handler above runs.
     } else if (peer.open) {
       dial()
@@ -69,20 +75,43 @@ export function createViewerSession(code: string) {
 
   function dial() {
     if (disposed || !peer) return
-    // Empty outbound stream is legal; the Camera answers with the real feed.
-    call = peer.call(code, new MediaStream())
+    hadMedia = false
+    request = peer.connect(code)
 
-    // No media within the timeout → the Camera is busy with another Viewer.
+    request.on('open', () => {
+      // Watch request delivered. The Camera will call us with the stream.
+    })
+
+    // Request closed before any media → the Camera rejected us (Q8) or died.
+    request.on('close', () => {
+      request = null
+      if (disposed || userEnded || hadMedia) return
+      clearTimeout(busyTimer)
+      setError('busy')
+      setStatus('error')
+      cleanupPeer()
+    })
+
+    // No media within the timeout → busy or dead path; treat as busy only if
+    // the request itself closed, else network failure.
     busyTimer = window.setTimeout(() => {
-      if (!hadMedia && call) {
-        setError('busy')
+      if (!hadMedia && !disposed) {
+        setError('network')
         setStatus('error')
-        call.close()
-        call = null
+        cleanupPeer()
       }
     }, BUSY_TIMEOUT_MS)
+  }
 
-    call.on('stream', (remote) => {
+  // The Camera calls us; answer receive-only.
+  function onCall(incoming: MediaConnection) {
+    if (call) {
+      incoming.close()
+      return
+    }
+    call = incoming
+    incoming.answer()
+    incoming.on('stream', (remote) => {
       hadMedia = true
       clearTimeout(busyTimer)
       retryCount = 0
@@ -99,17 +128,17 @@ export function createViewerSession(code: string) {
       }
     })
 
-    call.on('close', () => {
-      clearTimeout(busyTimer)
+    // Unexpected close after media → auto-reconnect (Q6), 3 attempts.
+    incoming.on('close', () => {
       call = null
-      if (disposed || userEnded) return
-      if (!hadMedia) return // busy path handled by the timeout
-      // Unexpected close after media → auto-reconnect (Q6), 3 attempts.
+      request?.close()
+      request = null
+      if (disposed || userEnded || !hadMedia) return
       if (retryCount < RETRY_DELAYS.length) {
         const delay = RETRY_DELAYS[retryCount++]!
         setStatus('reconnecting')
         retryTimer = window.setTimeout(() => {
-          if (!disposed) dial()
+          if (!disposed) start()
         }, delay)
       } else {
         setError('network')
@@ -129,6 +158,8 @@ export function createViewerSession(code: string) {
     clearTimeout(busyTimer)
     call?.close()
     call = null
+    request?.close()
+    request = null
     peer?.destroy()
     peer = null
   }

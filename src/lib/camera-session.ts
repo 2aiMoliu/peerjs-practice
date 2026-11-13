@@ -1,5 +1,5 @@
 import { createSignal, onCleanup } from 'solid-js'
-import Peer, { type MediaConnection } from 'peerjs'
+import Peer, { type DataConnection, type MediaConnection } from 'peerjs'
 import { makeJoinCode } from './codes'
 import { peerOptions } from './peer-config'
 
@@ -13,6 +13,11 @@ export type CameraStatus =
 /**
  * Camera role: this device's camera is the source. One Viewer at a time (Q8).
  * The Join code is this peer's id, so reconnects keep the code valid.
+ *
+ * Flow: the Viewer opens a data connection to us (a watch request); we then
+ * place the media call to the Viewer with the real stream. The Viewer answers
+ * receive-only. (The reverse — Viewer calling with an empty stream — cannot
+ * work: an offer with no tracks leaves no m-line for the video to ride on.)
  */
 export function createCameraSession() {
   const [status, setStatus] = createSignal<CameraStatus>('requesting-camera')
@@ -22,6 +27,7 @@ export function createCameraSession() {
   const [joinCode] = createSignal(makeJoinCode())
 
   let peer: Peer | null = null
+  let request: DataConnection | null = null
   let call: MediaConnection | null = null
   let localStream: MediaStream | null = null
   let wakeLock: WakeLockSentinel | null = null
@@ -74,31 +80,40 @@ export function createCameraSession() {
       fail(`Connection error (${err.type}). Try again.`)
     })
 
-    peer.on('call', (incoming) => {
-      if (call && !call.open) {
-        // Session ended moments ago; still treat as busy until cleanup finishes.
-        incoming.close()
-        return
-      }
-      if (call) {
-        // Q8: strict 1:1 — a second Viewer gets rejected by closing the call.
-        incoming.close()
+    // Watch request from a Viewer.
+    peer.on('connection', (conn) => {
+      if (request || call) {
+        // Q8: strict 1:1 — a second Viewer is rejected by closing its request.
+        conn.on('open', () => conn.close())
+        if (!request) conn.close()
         return
       }
       if (!localStream) {
-        incoming.close()
+        conn.close()
         return
       }
-      call = incoming
-      // Q7: auto-accept the first Viewer with the real stream.
-      incoming.answer(localStream)
-      setStartedAt(Date.now())
-      setStatus('live')
-      incoming.on('close', () => {
+      request = conn
+      conn.on('close', () => {
+        if (request === conn) request = null
+      })
+      // We call the Viewer; its answer is receive-only.
+      call = peer!.call(conn.peer, localStream)
+      call.on('close', () => {
         call = null
+        request?.close()
+        request = null
         setStartedAt(null)
         if (!disposed) setStatus('waiting')
       })
+      call.on('error', () => {
+        call = null
+        request?.close()
+        request = null
+        setStartedAt(null)
+        if (!disposed) setStatus('waiting')
+      })
+      setStartedAt(Date.now())
+      setStatus('live')
     })
   }
 
@@ -127,6 +142,8 @@ export function createCameraSession() {
   function teardown() {
     call?.close()
     call = null
+    request?.close()
+    request = null
     localStream?.getTracks().forEach((t) => t.stop())
     localStream = null
     setStream(null)

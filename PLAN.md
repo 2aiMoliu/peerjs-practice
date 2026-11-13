@@ -49,11 +49,11 @@ src/
 
 ### Protocol decisions (implementation-set, recorded)
 
-- **Join code = Camera's PeerJS peer id.** Viewer's `peer.call(code, new MediaStream())` — empty stream is legal; the Camera answers with the real one. Video flows Camera → Viewer.
-- **Camera**: first incoming call → `call.answer(localStream)` (auto-accept, Q7). Later calls while a Session is live → `call.close()` immediately (Q8).
+- **Join code = Camera's PeerJS peer id.** Viewer opens a *data connection* to the Camera (watch request); the Camera then calls the Viewer with the real stream, and the Viewer answers receive-only. Video flows Camera → Viewer. (An offer with no tracks — the earlier draft's Viewer-first `call` with an empty stream — cannot carry media: no m-line exists for the video. Fixed 2026-11-13 after live test.)
+- **Camera**: first watch request → call the Viewer with `localStream` (auto-accept, Q7). A request while a Session is live → close it immediately (Q8).
 - **Viewer disambiguation** (no control channel — known simplification):
   - `peer-unavailable` error → "No camera found for that code."
-  - call closes with no media within ~2 s → "Camera is in use."
+  - watch request closed with no media within ~5 s → "Camera is in use."
 - **Auto-reconnect (viewer, Q6)**: unexpected close after media → retry `call()` up to 3×, backoff 1/2/4 s, UI "Reconnecting…". User hang-up never retries.
 - **Camera reconnect**: `peer.on('disconnected')` → `peer.reconnect()` — keeps the same id, so the Join code and QR stay valid.
 - **Feed interrupted (Q7)**: remote `videoTrack.onmute` → interrupted; `onunmute` → live. Covers phone tab-hide; Wake Lock covers screen-off.
