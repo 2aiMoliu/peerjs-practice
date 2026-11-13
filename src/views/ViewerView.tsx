@@ -4,6 +4,7 @@ import { isCompleteCode, normalizeJoinCode } from '../lib/codes'
 import { createViewerSession } from '../lib/viewer-session'
 import { cameraUrl } from '../lib/util'
 import { liveDot, useTimecode } from './hud'
+import { t } from '../lib/i18n'
 
 export function ViewerView(props: { initialCode?: string }) {
   const [code, setCode] = createSignal(normalizeJoinCode(props.initialCode ?? ''))
@@ -49,12 +50,12 @@ function StartScreen(props: {
 
   return (
     <main class="flex h-full flex-col justify-center gap-8 px-5 py-8 sm:mx-auto sm:max-w-2xl sm:px-6">
-      <h1 class="text-2xl font-semibold tracking-tight text-paper">Watch a feed</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-paper">{t('watchFeed')}</h1>
 
       <div class="grid items-start gap-8 sm:grid-cols-[1fr_auto]">
         <form onSubmit={props.onSubmit} class="flex flex-col gap-4">
           <label for="code" class="text-sm text-fog">
-            Enter the code shown on the camera
+            {t('enterCode')}
           </label>
           <input
             id="code"
@@ -73,10 +74,10 @@ function StartScreen(props: {
             disabled={!isCompleteCode(props.code())}
             class="rounded bg-paper px-4 py-3 font-medium text-room transition-opacity disabled:opacity-30"
           >
-            Watch
+            {t('watch')}
           </button>
           <Show when={props.code() && !isCompleteCode(props.code())}>
-            <p class="text-sm text-fog">The code has 6 characters.</p>
+            <p class="text-sm text-fog">{t('codeLen')}</p>
           </Show>
         </form>
 
@@ -88,9 +89,9 @@ function StartScreen(props: {
             width="192"
             height="192"
           />
-          <p class="text-sm text-fog">scan on the phone</p>
+          <p class="text-sm text-fog">{t('scanPhone')}</p>
           <button class="text-sm text-fog underline underline-offset-4 hover:text-paper" onClick={copyLink}>
-            {copied() ? 'copied' : 'copy link'}
+            {copied() ? t('copied') : t('copyLink')}
           </button>
         </div>
       </div>
@@ -117,13 +118,13 @@ function WatchScreen(props: {
   const errorText = createMemo(() => {
     switch (s.error()) {
       case 'no-camera':
-        return 'No camera found for that code.'
+        return t('errNoCamera')
       case 'busy':
-        return 'Camera is in use.'
+        return t('errBusy')
       case 'network':
-        return 'Lost the connection to the camera.'
+        return t('errNetwork')
       default:
-        return 'Connection failed. Try again.'
+        return t('errFailed')
     }
   })
 
@@ -158,10 +159,10 @@ function WatchScreen(props: {
           <div class="absolute right-0 bottom-0 h-6 w-6 border-r-2 border-b-2 border-paper" />
         </div>
 
-        <div class="absolute inset-x-0 top-0 flex items-center gap-2 bg-room/60 px-4 py-2 font-hud text-sm backdrop-blur-sm">
-          <Show when={!s.interrupted()} fallback={<span class="text-caution">FEED INTERRUPTED</span>}>
+        <div class="absolute inset-x-0 top-0 flex items-center gap-2 bg-room/60 py-2 pr-4 pl-28 font-hud text-sm backdrop-blur-sm">
+          <Show when={!s.interrupted()} fallback={<span class="text-caution">{t('feedInterrupted')}</span>}>
             {liveDot()}
-            <span class="text-signal">LIVE</span>
+            <span class="text-signal">{t('live')}</span>
           </Show>
           <span class="tracking-[0.2em] text-paper">{props.code}</span>
           <span class="ml-auto text-paper">{timecode()}</span>
@@ -169,7 +170,7 @@ function WatchScreen(props: {
 
         <Show when={s.status() === 'reconnecting'}>
           <div class="absolute inset-0 flex items-center justify-center bg-room/60">
-            <p class="font-hud text-sm text-paper">Reconnecting…</p>
+            <p class="font-hud text-sm text-paper">{t('reconnecting')}</p>
           </div>
         </Show>
 
@@ -178,13 +179,13 @@ function WatchScreen(props: {
             class="rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
             onClick={snapshot}
           >
-            Snapshot
+            {t('snapshot')}
           </button>
           <button
             class="rounded border border-signal/60 bg-room/70 px-4 py-2 text-sm text-paper hover:border-signal"
             onClick={props.onLeave}
           >
-            End
+            {t('end')}
           </button>
         </div>
       </Show>
@@ -192,27 +193,27 @@ function WatchScreen(props: {
       {/* Connecting / error states */}
       <Show when={s.status() === 'connecting'}>
         <div class="absolute inset-0 flex items-center justify-center bg-room/80">
-          <p class="font-hud text-sm text-paper">Connecting…</p>
+          <p class="font-hud text-sm text-paper">{t('connecting')}</p>
         </div>
       </Show>
 
       <Show when={s.status() === 'error' || s.status() === 'ended'}>
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/90 px-6 text-center">
           <p class="text-paper">
-            {s.status() === 'ended' ? 'Feed ended' : errorText()}
+            {s.status() === 'ended' ? t('feedEnded') : errorText()}
           </p>
           <div class="flex gap-3">
             <button
               class="rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
               onClick={props.onLeave}
             >
-              Try again
+              {t('tryAgain')}
             </button>
             <a
               href={`?`}
               class="rounded border border-line bg-room/70 px-4 py-2 text-sm text-fog hover:text-paper"
             >
-              Back to start
+              {t('backToStart')}
             </a>
           </div>
         </div>

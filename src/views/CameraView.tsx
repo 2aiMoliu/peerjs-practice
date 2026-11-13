@@ -3,6 +3,8 @@ import QRCode from 'qrcode'
 import { createCameraSession } from '../lib/camera-session'
 import { viewerUrl } from '../lib/util'
 import { liveDot, useTimecode } from './hud'
+import { t } from '../lib/i18n'
+import type { CameraErrorKind } from '../lib/camera-session'
 
 export function CameraView() {
   const s = createCameraSession()
@@ -31,6 +33,19 @@ export function CameraView() {
 
   const link = createMemo(() => viewerUrl(s.joinCode()))
 
+  const errorText = () => {
+    switch (s.error() as CameraErrorKind) {
+      case 'denied':
+        return t('errDenied')
+      case 'access':
+        return t('errAccess')
+      case 'not-found':
+        return t('errNotFound')
+      default:
+        return t('errFailed')
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(link())
@@ -58,9 +73,9 @@ export function CameraView() {
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-room/80 px-6 text-center">
           <Show
             when={s.status() === 'waiting'}
-            fallback={<p class="text-fog">Asking for camera access…</p>}
+            fallback={<p class="text-fog">{t('askingCamera')}</p>}
           >
-            <p class="text-sm text-fog">Waiting for a viewer</p>
+            <p class="text-sm text-fog">{t('waitingViewer')}</p>
             <p class="font-hud text-4xl font-medium tracking-[0.3em] text-paper">
               {s.joinCode()}
             </p>
@@ -72,13 +87,13 @@ export function CameraView() {
                 width="192"
                 height="192"
               />
-              <p class="text-sm text-fog">scan on the desktop</p>
+              <p class="text-sm text-fog">{t('scanDesktop')}</p>
             </div>
             <button
               class="rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
               onClick={copyLink}
             >
-              {copied() ? 'Link copied' : 'Copy watch link'}
+              {copied() ? t('linkCopied') : t('copyWatchLink')}
             </button>
             <p class="max-w-xs break-all text-xs text-fog">{link()}</p>
           </Show>
@@ -87,9 +102,9 @@ export function CameraView() {
 
       {/* Live HUD */}
       <Show when={s.status() === 'live'}>
-        <div class="absolute inset-x-0 top-0 flex items-center gap-2 bg-room/60 px-4 py-2 font-hud text-sm backdrop-blur-sm">
+        <div class="absolute inset-x-0 top-0 flex items-center gap-2 bg-room/60 py-2 pr-4 pl-28 font-hud text-sm backdrop-blur-sm">
           {liveDot()}
-          <span class="text-signal">LIVE</span>
+          <span class="text-signal">{t('live')}</span>
           <span class="text-paper">{timecode()}</span>
           <span class="ml-auto tracking-[0.2em] text-fog">{s.joinCode()}</span>
         </div>
@@ -97,21 +112,21 @@ export function CameraView() {
 
       <Show when={s.status() === 'error'}>
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/90 px-6 text-center">
-          <p class="text-paper">{s.error()}</p>
+          <p class="text-paper">{errorText()}</p>
           <button
             class="rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
             onClick={() => location.reload()}
           >
-            Try again
+            {t('tryAgain')}
           </button>
         </div>
       </Show>
 
       <Show when={s.status() === 'ended'}>
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/90 text-center">
-          <p class="text-paper">Feed ended</p>
+          <p class="text-paper">{t('feedEnded')}</p>
           <a href={`?`} class="text-sm text-fog underline underline-offset-4 hover:text-paper">
-            Back to start
+            {t('backToStart')}
           </a>
         </div>
       </Show>
@@ -122,7 +137,7 @@ export function CameraView() {
           class="absolute right-4 bottom-4 rounded border border-line bg-room/70 px-4 py-2 text-sm text-paper backdrop-blur-sm hover:border-fog"
           onClick={s.end}
         >
-          End feed
+          {t('endFeed')}
         </button>
       </Show>
     </main>

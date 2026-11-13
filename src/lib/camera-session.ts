@@ -3,6 +3,8 @@ import Peer, { type DataConnection, type MediaConnection } from 'peerjs'
 import { makeJoinCode } from './codes'
 import { peerOptions } from './peer-config'
 
+export type CameraErrorKind = 'denied' | 'access' | 'not-found' | 'conn'
+
 export type CameraStatus =
   | 'requesting-camera' // asking for getUserMedia
   | 'waiting' // camera on, peer up, no Viewer yet
@@ -21,7 +23,7 @@ export type CameraStatus =
  */
 export function createCameraSession() {
   const [status, setStatus] = createSignal<CameraStatus>('requesting-camera')
-  const [error, setError] = createSignal<string | null>(null)
+  const [error, setError] = createSignal<CameraErrorKind | null>(null)
   const [stream, setStream] = createSignal<MediaStream | null>(null)
   const [startedAt, setStartedAt] = createSignal<number | null>(null)
   const [joinCode] = createSignal(makeJoinCode())
@@ -45,14 +47,14 @@ export function createCameraSession() {
         try {
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         } catch {
-          fail('Camera access failed. Check browser permissions and try again.')
+          fail('access')
           return
         }
       } else if (e instanceof DOMException && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-        fail('Camera permission denied. Allow camera access in the browser, then try again.')
+        fail('denied')
         return
       } else {
-        fail('No camera found on this device.')
+        fail('not-found')
         return
       }
     }
@@ -74,10 +76,10 @@ export function createCameraSession() {
     peer.on('error', (err) => {
       if (err.type === 'peer-unavailable') return // not ours to handle
       if (err.type === 'network') {
-        setError('Lost the signaling server. Retrying…')
+        setError('conn')
         return
       }
-      fail(`Connection error (${err.type}). Try again.`)
+      fail('conn')
     })
 
     // Watch request from a Viewer.
@@ -117,8 +119,8 @@ export function createCameraSession() {
     })
   }
 
-  function fail(message: string) {
-    setError(message)
+  function fail(kind: CameraErrorKind) {
+    setError(kind)
     setStatus('error')
     teardown()
   }

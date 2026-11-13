@@ -1,12 +1,13 @@
 import { cameraUrl } from '../lib/util'
+import { t } from '../lib/i18n'
 
 export function Landing() {
   return (
-    <main class="flex h-full flex-col justify-center gap-10 px-5 sm:mx-auto sm:max-w-md sm:px-6">
+    <main class="flex h-full flex-col justify-center gap-10 px-5 pt-16 sm:mx-auto sm:max-w-md sm:px-6">
       <h1 class="text-3xl font-semibold tracking-tight text-paper sm:text-4xl">
-        Put a phone camera
+        {t('tagline1')}
         <br />
-        on a desktop screen.
+        {t('tagline2')}
       </h1>
 
       <nav class="flex flex-col border-t border-line" aria-label="Pick a role">
@@ -15,8 +16,8 @@ export function Landing() {
           class="group flex items-baseline justify-between border-b border-line py-5 pr-1 hover:bg-panel"
         >
           <span>
-            <span class="block text-lg font-medium text-paper">Open a camera</span>
-            <span class="block text-sm text-fog">use this phone as source</span>
+            <span class="block text-lg font-medium text-paper">{t('openCamera')}</span>
+            <span class="block text-sm text-fog">{t('openCameraSub')}</span>
           </span>
           <span class="font-hud text-sm text-fog group-hover:text-paper">↗</span>
         </a>
@@ -25,14 +26,14 @@ export function Landing() {
           class="group flex items-baseline justify-between border-b border-line py-5 pr-1 hover:bg-panel"
         >
           <span>
-            <span class="block text-lg font-medium text-paper">Watch a feed</span>
-            <span class="block text-sm text-fog">enter a code</span>
+            <span class="block text-lg font-medium text-paper">{t('watchFeed')}</span>
+            <span class="block text-sm text-fog">{t('watchFeedSub')}</span>
           </span>
           <span class="font-hud text-sm text-fog group-hover:text-paper">↗</span>
         </a>
       </nav>
 
-      <p class="text-sm text-fog">practice build · PeerJS cloud</p>
+      <p class="text-sm text-fog">{t('footer')}</p>
     </main>
   )
 }
