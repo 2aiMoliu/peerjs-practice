@@ -12,9 +12,12 @@ export type ViewerStatus =
 
 export type ViewerErrorKind = 'no-camera' | 'full' | 'network' | 'failed'
 
-// No media within this after assign → failed (defensive; old busy heuristic
-// is gone — the Camera answers with explicit control messages).
+// No media within 8 s of dial or assign → check progress before failing
+// (defensive; replaces the old close-timing heuristic — also covers a line
+// that never opens).
 const JOIN_MEDIA_TIMEOUT_MS = 8_000
+// Absolute ceiling for one join attempt while ICE is still negotiating.
+const JOIN_MEDIA_MAX_MS = 30_000
 // Reassign received but no new media yet → ask again.
 const PARENT_MEDIA_TIMEOUT_MS = 6_000
 // need-parent fallback: send immediately, then back off (R3 fallback).
@@ -57,6 +60,7 @@ export function createViewerSession(code: string) {
   let parentMediaTimer: number | undefined
   let npTimer: number | undefined
   let npAttempts = 0
+  let joinDeadline = 0
   let rejoinTimer: number | undefined
   let rejoinAttempts = 0
 
@@ -64,6 +68,7 @@ export function createViewerSession(code: string) {
     if (disposed || userEnded) return
     setError(null)
     setStatus('connecting')
+    npAttempts = 0 // fresh join attempt — its need-parent budget is fresh too
     armJoinGuard()
     if (!peer || peer.destroyed) {
       peer = new Peer(peerOptions)
@@ -94,17 +99,27 @@ export function createViewerSession(code: string) {
     cleanup()
   }
 
-  /** No media within 8 s of dial or assign → failed (defensive; replaces
-   *  the old close-timing heuristic — also covers a line that never opens). */
+  /** No media within 8 s of dial or assign → check progress before
+   *  failing. ICE still negotiating → keep waiting, up to the absolute cap.
+   *  Otherwise recover through the ladders (need-parent / re-join) — a slow
+   *  first hop must not kill a Session that would connect. */
   function armJoinGuard() {
     clearTimeout(joinTimer)
-    joinTimer = window.setTimeout(() => {
-      if (!hadMedia && !disposed && !userEnded) {
-        setError('failed')
-        setStatus('error')
-        cleanup()
-      }
-    }, JOIN_MEDIA_TIMEOUT_MS)
+    joinDeadline = Date.now() + JOIN_MEDIA_MAX_MS
+    joinTimer = window.setTimeout(onJoinGuard, JOIN_MEDIA_TIMEOUT_MS)
+  }
+
+  function onJoinGuard() {
+    if (hadMedia || disposed || userEnded) return
+    const ice = incoming?.peerConnection.iceConnectionState
+    const negotiating =
+      ice === 'new' || ice === 'checking' || ice === 'connected' || ice === 'disconnected'
+    if (negotiating && Date.now() < joinDeadline) {
+      joinTimer = window.setTimeout(onJoinGuard, JOIN_MEDIA_TIMEOUT_MS)
+      return
+    }
+    if (control?.open && expectedParent !== null) needParent()
+    else rejoin()
   }
 
   function dial() {
