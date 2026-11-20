@@ -4,7 +4,8 @@ import { isCompleteCode, normalizeJoinCode } from '../lib/codes'
 import { createViewerSession } from '../lib/viewer-session'
 import { cameraUrl } from '../lib/util'
 import { liveDot, useTimecode } from './hud'
-import { t } from '../lib/i18n'
+import { t, watchingLabel } from '../lib/i18n'
+import { ChatButton, ChatPanel, createUnread } from './ChatPanel'
 
 export function ViewerView(props: { initialCode?: string }) {
   const [code, setCode] = createSignal(normalizeJoinCode(props.initialCode ?? ''))
@@ -106,6 +107,8 @@ function WatchScreen(props: {
 }) {
   const s = props.session
   const timecode = useTimecode(s.startedAt)
+  const [chatOpen, setChatOpen] = createSignal(false)
+  const unread = createUnread(s.messages, chatOpen, s.chatHydrated)
 
   let videoEl!: HTMLVideoElement
   const attach = (el: HTMLVideoElement) => {
@@ -119,8 +122,8 @@ function WatchScreen(props: {
     switch (s.error()) {
       case 'no-camera':
         return t('errNoCamera')
-      case 'busy':
-        return t('errBusy')
+      case 'full':
+        return t('errFull')
       case 'network':
         return t('errNetwork')
       default:
@@ -159,13 +162,15 @@ function WatchScreen(props: {
           <div class="absolute right-0 bottom-0 h-6 w-6 border-r-2 border-b-2 border-paper" />
         </div>
 
+        {/* HUD — `● LIVE K7MQ2 00:04:12  7 watching` */}
         <div class="absolute inset-x-0 top-0 flex items-center gap-2 bg-room/60 py-2 pr-4 pl-28 font-hud text-sm backdrop-blur-sm">
           <Show when={!s.interrupted()} fallback={<span class="text-caution">{t('feedInterrupted')}</span>}>
             {liveDot()}
             <span class="text-signal">{t('live')}</span>
           </Show>
           <span class="tracking-[0.2em] text-paper">{props.code}</span>
-          <span class="ml-auto text-paper">{timecode()}</span>
+          <span class="text-paper">{timecode()}</span>
+          <span class="ml-auto text-fog">{watchingLabel(s.watchingCount())}</span>
         </div>
 
         <Show when={s.status() === 'reconnecting'}>
@@ -181,6 +186,7 @@ function WatchScreen(props: {
           >
             {t('snapshot')}
           </button>
+          <ChatButton unread={unread} onClick={() => setChatOpen(true)} />
           <button
             class="rounded border border-signal/60 bg-room/70 px-4 py-2 text-sm text-paper hover:border-signal"
             onClick={props.onLeave}
@@ -188,6 +194,19 @@ function WatchScreen(props: {
             {t('end')}
           </button>
         </div>
+
+        <Show when={chatOpen()}>
+          <ChatPanel
+            messages={s.messages}
+            my={() => {
+              const n = s.viewerNumber()
+              return n === null ? null : { role: 'viewer' as const, n }
+            }}
+            canSend={() => s.status() === 'live' || s.status() === 'reconnecting'}
+            onSend={s.sendChat}
+            onClose={() => setChatOpen(false)}
+          />
+        </Show>
       </Show>
 
       {/* Connecting / error states */}

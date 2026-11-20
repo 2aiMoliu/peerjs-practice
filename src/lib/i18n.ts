@@ -46,8 +46,15 @@ const en = {
   snapshot: 'Snapshot',
   end: 'End',
 
+  chat: 'Chat',
+  chatClose: 'Close chat',
+  send: 'Send',
+  chatPlaceholder: 'Message',
+  chatEmpty: 'No chat yet',
+  chatNeedsViewer: 'Chat opens when a viewer joins',
+
   errNoCamera: 'No camera found for that code.',
-  errBusy: 'Camera is in use.',
+  errFull: 'Camera is full.',
   errNetwork: 'Lost the connection to the camera.',
   errFailed: 'Connection failed. Try again.',
   errDenied: 'Camera permission denied. Allow camera access in the browser, then try again.',
@@ -91,8 +98,15 @@ const ja: Dict = {
   snapshot: 'スナップショット',
   end: '終了',
 
+  chat: 'チャット',
+  chatClose: 'チャットを閉じる',
+  send: '送信',
+  chatPlaceholder: 'メッセージ',
+  chatEmpty: 'チャットはまだありません',
+  chatNeedsViewer: '視聴者が参加するとチャットが開きます',
+
   errNoCamera: 'そのコードのカメラが見つかりません。',
-  errBusy: 'カメラは使用中です。',
+  errFull: 'カメラが満員です。',
   errNetwork: 'カメラとの接続が切断されました。',
   errFailed: '接続に失敗しました。もう一度お試しください。',
   errDenied: 'カメラの使用が許可されていません。ブラウザで許可してから再試行してください。',
@@ -107,4 +121,23 @@ const dicts: Record<Lang, Dict> = { en, ja }
 export function t(key: keyof typeof en): string {
   const v = dicts[lang()][key]
   return typeof v === 'string' ? v : String(v)
+}
+
+// Chat sender and viewer-count labels — parameterized, so they read the
+// language signal directly instead of going through `t`.
+
+export function cameraName(): string {
+  return lang() === 'ja' ? 'カメラ' : 'Camera'
+}
+
+export function viewerName(n: number): string {
+  return lang() === 'ja' ? `視聴者 ${n}` : `Viewer ${n}`
+}
+
+export function watchingLabel(n: number): string {
+  return lang() === 'ja' ? `${n}人が視聴中` : `${n} watching`
+}
+
+export function youLabel(): string {
+  return lang() === 'ja' ? 'あなた' : 'You'
 }

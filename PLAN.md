@@ -170,7 +170,101 @@ Principles:
 
 ## Known simplifications (recorded, accepted)
 
-- Busy detection is a close-timing heuristic, not a control message.
 - No TURN server: peers behind symmetric NAT will fail. Documented in README.
 - Phone tab-hide pauses the camera at the OS level; Wake Lock mitigates screen sleep only.
-- Strict 1:1: second Viewer always rejected.
+- (Busy detection as a heuristic and strict 1:1 were superseded by the 2026-11-20 addendum below.)
+
+---
+
+## Addendum 2026-11-20 — Live broadcast + Chat
+
+Status: approved — user said "all yes" in grill rounds 1–2; supersedes Q6 (no
+chat / no multi-viewer) and Q8 (strict 1:1) above. Everything else stands:
+PeerJS cloud signaling, no TURN, Join code = Camera peer id, dark instrument
+look, no test suite, no linter.
+
+Goal: a YouTube/TikTok-live-shaped practice app, but peer-to-peer — group chat
+between Camera and Viewers, and one Camera broadcast to many Viewers at once.
+
+### Topology
+
+- **Media = tree.** Fanout 4 at every node. The Camera calls its direct
+  children with `localStream`; a Relay calls its children with the remote
+  stream it received (track re-publish — plain WebRTC, no server). Each hop
+  adds a small delay; accepted. Depth ≤ 2 holds 20 Viewers, ≤ 3 holds 84.
+- **Control + chat = star.** Every Viewer keeps one DataConnection to the
+  Camera for the whole Session. Chat messages are tiny, so the phone relays
+  chat, never video. The Camera knows every edge, which makes assignment and
+  repair possible without a server.
+
+### Settled decisions
+
+| # | Decision | Answer |
+|---|----------|--------|
+| R1 | Capacity | Fanout 4 at every node, breadth-first assignment (shallowest free slot), no depth cap. `Camera full` stays only as a defensive error (hard node limit 64). |
+| R2 | Relaying | Mandatory, camera-assigned. Any Viewer may be picked, desktop or phone. |
+| R3 | Repair | Camera-driven: a Relay leaving re-parents its direct children to free slots; sub-branches move as one unit; children heal via `replaceTrack`. Viewer fallbacks: `need-parent` (media dead, control alive) and full re-join (control dead). |
+| R4 | Chat history | Camera keeps the last 50 messages in memory, replays to each Viewer on join. Nothing on disk. |
+| R5 | Labels | Camera assigns monotonic Viewer numbers (`Viewer 3`), never reused, so history labels stay stable. Own messages render as "You". |
+| R6 | Entry | Auto-accept everyone with the Join code, up to tree capacity. No approval step. |
+| R7 | Count | Camera pushes `count`; both HUDs show `N watching`. |
+| Q1 | Chat | Group: the Camera relays every message to all Viewers; one broadcast order for everyone, sender included. |
+| Q5 | Chat life | In memory per Session. No replay after a full re-join beyond the Camera's history. |
+| Q6 | Chat UI | Toggle panel with unread dot; Feed stays full-screen. Camera input disabled until a Viewer joins. |
+| Q7 | Messages | Plain text, 500-char cap, timestamps, newest at bottom, auto-scroll. No typing indicator, no read receipts, no images. |
+
+### Protocol (typed JSON on the control line)
+
+Camera → Viewer: `assign {viewerNumber, parentId}` · `reassign {parentId}` ·
+`adopt {childId}` (to a Relay: call this peer) · `history {messages}` ·
+`chat {message}` · `count {n}` · `ended` · `full` (defensive).
+
+Viewer → Camera: `chat {text}` · `need-parent`.
+
+Chat ordering: the Camera appends on receipt and broadcasts one ordered copy
+on all lines, including the sender. The sender renders from the echo, so
+everyone sees one order.
+
+The `busy` error kind and "Camera is in use" are removed: the Camera answers
+with explicit control messages. Kept: `no-camera`, `network`, `failed`, plus
+defensive `full`. A join that never delivers media within 8 s fails as
+`failed` (defensive; replaces the old close-timing heuristic).
+
+### Repair flows
+
+- **Relay leaves**: Camera sees the control-line close → re-attaches its
+  direct children to free slots (BFS) → `reassign` to each orphan, `adopt` to
+  each new parent (or a direct call when the parent is the Camera). Orphans
+  keep their own subtrees; deeper children heal via `replaceTrack`.
+- **Relay re-parented**: swaps the outgoing video track on its existing child
+  calls with `RTCRtpSender.replaceTrack` — seamless, no renegotiation. If it
+  throws, it closes and re-calls each child (children accept a replacing call
+  from their assigned parent).
+- **Viewer fallback**: media closed but control alive → `need-parent` (3
+  attempts, 0/2/4 s). Control line dead → full re-join (3 attempts, 1/2/4 s,
+  fresh peer id → fresh Viewer number). Exhausted → error.
+- **Camera ends**: `ended` to all lines, then teardown. Viewer leaves: its
+  line closes; Camera repairs and pushes `count`. Last Viewer gone → Camera
+  returns to `waiting`; code and QR stay valid.
+
+### UI
+
+- Camera HUD: `● LIVE 00:04:12  2 watching  K7MQ2` + Chat button with unread
+  dot (amber). Waiting overlay unchanged.
+- Viewer HUD: `● LIVE K7MQ2 00:04:12  7 watching` + viewfinder brackets +
+  `Snapshot · Chat · End`. Chat button carries the unread dot.
+- Chat panel: overlay on both sides (bottom sheet on phones, docked card on
+  desktop), never shrinks the Feed. Mono voice for sender labels and clocks;
+  Instrument Sans for message text. Sender names localize per device
+  (`Camera` / `Viewer 3` / `You`).
+
+### Implementation notes
+
+- `src/lib/protocol.ts` — message union + guards + shared limits.
+- `src/lib/tree.ts` — camera-side media tree: BFS attach, move (keeps
+  subtree), remove (returns orphan roots). Pure logic, no PeerJS.
+- Assign race: media can beat its `assign` message. A Viewer accepts one
+  blind call before its first assign — only the Camera or its assigned Relay
+  can be the caller.
+- Relay duties start before media arrives: adopted children queue until the
+  Relay's own stream lands (`pendingChildren`).
