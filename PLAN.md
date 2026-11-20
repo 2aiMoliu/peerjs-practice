@@ -227,8 +227,11 @@ everyone sees one order.
 
 The `busy` error kind and "Camera is in use" are removed: the Camera answers
 with explicit control messages. Kept: `no-camera`, `network`, `failed`, plus
-defensive `full`. A join that never delivers media within 8 s fails as
-`failed` (defensive; replaces the old close-timing heuristic).
+defensive `full`. No media within 8 s of dial or assign: while ICE is still
+negotiating the Viewer keeps waiting (absolute cap 30 s per attempt);
+otherwise it recovers through `need-parent` or a full re-join before any
+error — a slow first hop must not kill a Session that would connect
+(widened 2026-11-20 after a live "Connection failed" report).
 
 ### Repair flows
 
