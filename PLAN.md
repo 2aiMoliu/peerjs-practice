@@ -284,8 +284,9 @@ stand unchanged.
   input stays disabled until a Viewer joins; Viewer can send while live or
   reconnecting. A failed send keeps the text.
 - Every Chat arrival floats as a transient bubble over the Feed, bottom-left
-  above the input; oldest on top, newest at the bottom, max 4 shown, each
-  fades after ~5 s. Own messages float too — sender included, one order for
+  above the input; oldest on top, newest at the bottom, max 8 shown, each
+  stays ≥30 s before it fades (raised from 5 s per user, same day). Own
+  messages float too — sender included, one order for
   all. Bubbles ignore pointer events and are aria-hidden.
 - History replay never floats: each replay (first join, repair re-join)
   bumps `chatEpoch` on the Viewer; the float cursor resyncs to it.

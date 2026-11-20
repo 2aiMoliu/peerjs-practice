@@ -13,8 +13,10 @@ function nameFor(from: SenderLabel, my: SenderLabel | null): string {
   return from.role === 'camera' ? cameraName() : viewerName(from.n)
 }
 
-const FLOAT_TTL_MS = 5000
-const MAX_FLOATS = 4
+const FLOAT_TTL_MS = 30_000
+// Burst guard: the 30 s floor holds unless ≥8 messages land inside one
+// 30 s window; then the oldest yields first.
+const MAX_FLOATS = 8
 
 interface FloatItem {
   id: number
@@ -25,8 +27,8 @@ interface FloatItem {
 /**
  * Chat floats (Q6 revised): every Chat arrival surfaces as a transient
  * bubble over the Feed, bottom-left above the input, newest at the bottom,
- * fading after ~5 s (max 4 shown). Own messages float too — the sender is
- * included in the one broadcast order.
+ * staying ≥30 s before it fades (max 8 shown). Own messages float too — the
+ * sender is included in the one broadcast order.
  *
  * `epoch` marks each history replay (first join and repair re-join). Its
  * effect is registered before the arrival effect, so within one batch the

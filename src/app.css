@@ -72,17 +72,19 @@
   }
 }
 
-/* Chat float (Q6 revised): bubble rises into place, holds, fades out. */
+/* Chat float (Q6 revised): bubble rises into place, holds ≥30 s, fades out.
+   Percentages are relative to the 30 s TTL: 2% ≈ 0.6 s entrance, last 1 s
+   fades. */
 @keyframes chatfloat {
   0% {
     opacity: 0;
     transform: translateY(10px);
   }
-  10% {
+  2% {
     opacity: 1;
     transform: translateY(0);
   }
-  78% {
+  97% {
     opacity: 1;
     transform: translateY(0);
   }
@@ -93,7 +95,7 @@
 }
 
 .chat-float-item {
-  animation: chatfloat 5s ease-out forwards;
+  animation: chatfloat 30s ease-out forwards;
 }
 
 /* Reduced motion: hold each bubble solid for its TTL instead of animating. */

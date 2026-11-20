@@ -33,7 +33,7 @@ The group text between the Camera and all Viewers during a Session. In memory on
 _Avoid_: messages, DMs, comments
 
 **Chat float**:
-A Chat arrival shown as a transient bubble over the Feed, bottom-left above the Chat input. Fades after ~5 s; history replays never float.
+A Chat arrival shown as a transient bubble over the Feed, bottom-left above the Chat input. Stays ≥30 s, then fades; history replays never float.
 _Avoid_: toast, notification, danmaku
 
 **Watching**:
