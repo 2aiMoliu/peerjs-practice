@@ -4,7 +4,7 @@ import { createCameraSession } from '../lib/camera-session'
 import { viewerUrl } from '../lib/util'
 import { liveDot, useTimecode } from './hud'
 import { t, watchingLabel } from '../lib/i18n'
-import { ChatButton, ChatPanel, createUnread } from './ChatPanel'
+import { ChatFloats, ChatInput } from './ChatOverlay'
 import type { CameraErrorKind } from '../lib/camera-session'
 
 export function CameraView() {
@@ -12,8 +12,6 @@ export function CameraView() {
   const timecode = useTimecode(s.startedAt)
   const [copied, setCopied] = createSignal(false)
   const [qr, setQr] = createSignal('')
-  const [chatOpen, setChatOpen] = createSignal(false)
-  const unread = createUnread(s.messages, chatOpen)
 
   onMount(() => {
     QRCode.toDataURL(viewerUrl(s.joinCode()), {
@@ -135,26 +133,18 @@ export function CameraView() {
         </div>
       </Show>
 
-      {/* Chat + End feed — bottom-right, quiet */}
+      {/* Chat input (always visible) + End feed — bottom bar */}
       <Show when={s.status() === 'live' || s.status() === 'waiting'}>
-        <div class="absolute right-4 bottom-4 flex gap-3">
-          <ChatButton unread={unread} onClick={() => setChatOpen(true)} />
+        <ChatFloats messages={s.messages} my={() => ({ role: 'camera' })} />
+        <div class="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-room/60 px-3 py-3 backdrop-blur-sm sm:px-4">
+          <ChatInput canSend={() => s.watchingCount() > 0} onSend={s.sendChat} />
           <button
-            class="rounded border border-line bg-room/70 px-4 py-2 text-sm text-paper backdrop-blur-sm hover:border-fog"
+            class="shrink-0 rounded border border-line bg-room/70 px-4 py-2 text-sm text-paper backdrop-blur-sm hover:border-fog"
             onClick={s.end}
           >
             {t('endFeed')}
           </button>
         </div>
-        <Show when={chatOpen()}>
-          <ChatPanel
-            messages={s.messages}
-            my={() => ({ role: 'camera' })}
-            canSend={() => s.watchingCount() > 0}
-            onSend={s.sendChat}
-            onClose={() => setChatOpen(false)}
-          />
-        </Show>
       </Show>
     </main>
   )

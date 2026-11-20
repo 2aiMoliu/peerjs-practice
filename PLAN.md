@@ -271,3 +271,27 @@ error — a slow first hop must not kill a Session that would connect
   can be the caller.
 - Relay duties start before media arrives: adopted children queue until the
   Relay's own stream lands (`pendingChildren`).
+
+## Addendum 2026-11-20 — Chat floats
+
+Status: approved — user asked for "every received chat float in feed like true
+live chat", floats "bottom left, above the chat input which is always visible
+and ready to send at the bottom". Supersedes Q6 (toggle panel + unread dot)
+and the Q7 auto-scroll line above. Protocol, star topology, and R4 history
+stand unchanged.
+
+- Chat input sits in the bottom bar on both sides, always visible. Camera
+  input stays disabled until a Viewer joins; Viewer can send while live or
+  reconnecting. A failed send keeps the text.
+- Every Chat arrival floats as a transient bubble over the Feed, bottom-left
+  above the input; oldest on top, newest at the bottom, max 4 shown, each
+  fades after ~5 s. Own messages float too — sender included, one order for
+  all. Bubbles ignore pointer events and are aria-hidden.
+- History replay never floats: each replay (first join, repair re-join)
+  bumps `chatEpoch` on the Viewer; the float cursor resyncs to it.
+- No toggle, no unread dot, no scrollback panel. The last 50 stay in memory
+  per R4 but have no surface.
+- `prefers-reduced-motion` shows bubbles solid for their TTL, no animation.
+- Fix on the way: element defaults moved into `@layer base` — the un-layered
+  `button { color: inherit }` beat Tailwind v4 utilities, so `bg-paper`
+  buttons rendered white with inherited near-white text (invisible labels).

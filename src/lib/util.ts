@@ -8,12 +8,6 @@ export function formatElapsed(startedAt: number | null): string {
   return `${hh}:${mm}:${ss}`
 }
 
-/** Clock time as hh:mm for chat timestamps. */
-export function formatClock(ts: number): string {
-  const d = new Date(ts)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
 /** The URL that opens this app in camera mode on another device. */
 export function cameraUrl(): string {
   return `${location.origin}${import.meta.env.BASE_URL}?mode=camera`

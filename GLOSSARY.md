@@ -32,6 +32,10 @@ _Avoid_: host, node, repeater
 The group text between the Camera and all Viewers during a Session. In memory only.
 _Avoid_: messages, DMs, comments
 
+**Chat float**:
+A Chat arrival shown as a transient bubble over the Feed, bottom-left above the Chat input. Fades after ~5 s; history replays never float.
+_Avoid_: toast, notification, danmaku
+
 **Watching**:
 The number of Viewers currently on a Feed. Shown in both HUDs.
 _Avoid_: viewers count (say "Watching"), audience

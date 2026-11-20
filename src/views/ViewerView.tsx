@@ -5,7 +5,7 @@ import { createViewerSession } from '../lib/viewer-session'
 import { cameraUrl } from '../lib/util'
 import { liveDot, useTimecode } from './hud'
 import { t, watchingLabel } from '../lib/i18n'
-import { ChatButton, ChatPanel, createUnread } from './ChatPanel'
+import { ChatFloats, ChatInput } from './ChatOverlay'
 
 export function ViewerView(props: { initialCode?: string }) {
   const [code, setCode] = createSignal(normalizeJoinCode(props.initialCode ?? ''))
@@ -107,8 +107,6 @@ function WatchScreen(props: {
 }) {
   const s = props.session
   const timecode = useTimecode(s.startedAt)
-  const [chatOpen, setChatOpen] = createSignal(false)
-  const unread = createUnread(s.messages, chatOpen, s.chatHydrated)
 
   let videoEl!: HTMLVideoElement
   const attach = (el: HTMLVideoElement) => {
@@ -179,34 +177,33 @@ function WatchScreen(props: {
           </div>
         </Show>
 
-        <div class="absolute inset-x-0 bottom-0 flex justify-center gap-3 bg-room/60 px-4 py-3 backdrop-blur-sm">
+        <div class="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-room/60 px-3 py-3 backdrop-blur-sm sm:px-4">
+          <ChatInput
+            canSend={() => s.status() === 'live' || s.status() === 'reconnecting'}
+            onSend={s.sendChat}
+          />
           <button
-            class="rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
+            class="shrink-0 rounded border border-line bg-panel px-4 py-2 text-sm text-paper hover:border-fog"
             onClick={snapshot}
           >
             {t('snapshot')}
           </button>
-          <ChatButton unread={unread} onClick={() => setChatOpen(true)} />
           <button
-            class="rounded border border-signal/60 bg-room/70 px-4 py-2 text-sm text-paper hover:border-signal"
+            class="shrink-0 rounded border border-signal/60 bg-room/70 px-4 py-2 text-sm text-paper hover:border-signal"
             onClick={props.onLeave}
           >
             {t('end')}
           </button>
         </div>
 
-        <Show when={chatOpen()}>
-          <ChatPanel
-            messages={s.messages}
-            my={() => {
-              const n = s.viewerNumber()
-              return n === null ? null : { role: 'viewer' as const, n }
-            }}
-            canSend={() => s.status() === 'live' || s.status() === 'reconnecting'}
-            onSend={s.sendChat}
-            onClose={() => setChatOpen(false)}
-          />
-        </Show>
+        <ChatFloats
+          messages={s.messages}
+          my={() => {
+            const n = s.viewerNumber()
+            return n === null ? null : { role: 'viewer' as const, n }
+          }}
+          epoch={s.chatEpoch}
+        />
       </Show>
 
       {/* Connecting / error states */}

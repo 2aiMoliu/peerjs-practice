@@ -36,36 +36,69 @@
   }
 }
 
-html,
-body {
-  height: 100%;
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-room);
+    color: var(--color-paper);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  input,
+  button,
+  a {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--color-paper);
+    outline-offset: 2px;
+  }
 }
 
-body {
-  background-color: var(--color-room);
-  color: var(--color-paper);
-  font-family: var(--font-ui);
-  -webkit-font-smoothing: antialiased;
+/* Chat float (Q6 revised): bubble rises into place, holds, fades out. */
+@keyframes chatfloat {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
-#root {
-  height: 100%;
+.chat-float-item {
+  animation: chatfloat 5s ease-out forwards;
 }
 
-input,
-button,
-a {
-  font: inherit;
-  color: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:focus-visible,
-input:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--color-paper);
-  outline-offset: 2px;
+/* Reduced motion: hold each bubble solid for its TTL instead of animating. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-float-item {
+    animation: none;
+  }
 }

@@ -47,10 +47,8 @@ const en = {
   end: 'End',
 
   chat: 'Chat',
-  chatClose: 'Close chat',
   send: 'Send',
   chatPlaceholder: 'Message',
-  chatEmpty: 'No chat yet',
   chatNeedsViewer: 'Chat opens when a viewer joins',
 
   errNoCamera: 'No camera found for that code.',
@@ -99,10 +97,8 @@ const ja: Dict = {
   end: '終了',
 
   chat: 'チャット',
-  chatClose: 'チャットを閉じる',
   send: '送信',
   chatPlaceholder: 'メッセージ',
-  chatEmpty: 'チャットはまだありません',
   chatNeedsViewer: '視聴者が参加するとチャットが開きます',
 
   errNoCamera: 'そのコードのカメラが見つかりません。',

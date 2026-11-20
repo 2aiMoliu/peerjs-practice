@@ -42,9 +42,9 @@ export function createViewerSession(code: string) {
   const [viewerNumber, setViewerNumber] = createSignal<number | null>(null)
   const [watchingCount, setWatchingCount] = createSignal(0)
   const [messages, setMessages] = createSignal<readonly ChatMessage[]>([])
-  // False until the Camera's history replay lands: the unread dot must not
-  // count messages that predate this Viewer (R4 vs Q6).
-  const [chatHydrated, setChatHydrated] = createSignal(false)
+  // Bumped on every history replay (first join and repair re-join): the Chat
+  // float cursor resyncs to it, so replays never float as live arrivals.
+  const [chatEpoch, setChatEpoch] = createSignal(0)
 
   let peer: Peer | null = null
   let control: DataConnection | null = null
@@ -173,7 +173,7 @@ export function createViewerSession(code: string) {
         break
       case 'history':
         setMessages(msg.messages)
-        setChatHydrated(true)
+        setChatEpoch((n) => n + 1)
         break
       case 'chat':
         setMessages((m) => [...m, msg.message])
@@ -420,7 +420,7 @@ export function createViewerSession(code: string) {
     viewerNumber,
     watchingCount,
     messages,
-    chatHydrated,
+    chatEpoch,
     sendChat,
     end,
   }
